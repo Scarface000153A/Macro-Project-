@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - FinTrack Finance & Attendance{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-card auth-card-wide">
+        <div class="auth-header">
+            <div class="auth-icon-circle">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h2>Create Your Account</h2>
+            <p>Start fresh with your own isolated, private personal finance & attendance tracker</p>
+        </div>
+
+        <form action="{{ url_for('register') }}" method="POST" class="auth-form" onsubmit="return validateRegisterForm()">
+            <div class="form-row">
+                <div class="form-group col-half">
+                    <label for="full_name">Full Name</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-user input-icon"></i>
+                        <input 
+                            type="text" 
+                            id="full_name" 
+                            name="full_name" 
+                            value="{{ full_name or '' }}" 
+                            placeholder="e.g. John Doe" 
+                            required 
+                            autofocus
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group col-half">
+                    <label for="username">Username</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-hashtag input-icon"></i>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            value="{{ username or '' }}" 
+                            placeholder="e.g. johndoe" 
+                            required
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-half">
+                    <label for="email">Email Address</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-envelope input-icon"></i>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            value="{{ email or '' }}" 
+                            placeholder="e.g. john@example.com" 
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group col-half">
+                    <label for="currency">Default Currency</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-coins input-icon"></i>
+                        <select id="currency" name="currency" class="form-select">
+                            <option value="₹" selected>₹ - Indian Rupee (INR)</option>
+                            <option value="$">$ - US Dollar (USD)</option>
+                            <option value="€">€ - Euro (EUR)</option>
+                            <option value="£">£ - British Pound (GBP)</option>
+                            <option value="¥">¥ - Japanese Yen / Yuan (JPY/CNY)</option>
+                            <option value="AED ">AED - UAE Dirham</option>
+                            <option value="C$">C$ - Canadian Dollar (CAD)</option>
+                            <option value="A$">A$ - Australian Dollar (AUD)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-half">
+                    <label for="password">Password (min. 6 characters)</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-lock input-icon"></i>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="••••••••" 
+                            required 
+                            minlength="6"
+                        >
+                        <button type="button" class="btn-toggle-pwd" onclick="togglePasswordVisibility('password', this)">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group col-half">
+                    <label for="confirm_password">Confirm Password</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-shield-check input-icon"></i>
+                        <input 
+                            type="password" 
+                            id="confirm_password" 
+                            name="confirm_password" 
+                            placeholder="••••••••" 
+                            required 
+                            minlength="6"
+                        >
+                        <button type="button" class="btn-toggle-pwd" onclick="togglePasswordVisibility('confirm_password', this)">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <span>Complete Registration</span>
+                <i class="fa-solid fa-user-check"></i>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

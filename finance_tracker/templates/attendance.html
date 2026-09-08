@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Tracker - FinTrack{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-title-group">
+            <h1 class="page-title">Personal Attendance Tracker</h1>
+            <p class="page-subtitle">Log your daily attendance, work timings, and track your attendance percentage.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="openModal('modal-attendance')">
+                <i class="fa-solid fa-calendar-plus"></i>
+                <span>Log Attendance</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Attendance Stats Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card card-attendance-pct">
+            <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Overall Attendance</span>
+                <h2 class="kpi-value text-accent">{{ attendance_pct }}%</h2>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill bg-success" data-progress="{{ attendance_pct }}"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-card card-present">
+            <div class="kpi-icon"><i class="fa-solid fa-user-check"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Present / WFH Days</span>
+                <h2 class="kpi-value text-positive">{{ present_days }}</h2>
+                <span class="kpi-subtext">Active work days logged</span>
+            </div>
+        </div>
+
+        <div class="kpi-card card-leave">
+            <div class="kpi-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Leaves & Half-Days</span>
+                <h2 class="kpi-value text-warning">{{ leave_days }}</h2>
+                <span class="kpi-subtext">Time-off & half-day leaves</span>
+            </div>
+        </div>
+
+        <div class="kpi-card card-absent">
+            <div class="kpi-icon"><i class="fa-solid fa-user-xmark"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Absences</span>
+                <h2 class="kpi-value text-negative">{{ absent_days }}</h2>
+                <span class="kpi-subtext">Out of {{ total_days }} total logged days</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Mark Today Box -->
+    <div class="content-card quick-attendance-card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-clock"></i> Quick Log Today ({{ today_date }})</h3>
+            {% if today_record %}
+            <span class="badge badge-success"><i class="fa-solid fa-check"></i> Logged as: {{ today_record.status }}</span>
+            {% else %}
+            <span class="badge badge-warning"><i class="fa-solid fa-clock-rotate-left"></i> Not Logged Yet</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('mark_attendance') }}" method="POST" class="quick-attendance-form">
+                <input type="hidden" name="date" value="{{ today_date }}">
+                
+                <div class="form-row-compact">
+                    <div class="form-group flex-1">
+                        <label for="today-status">Status *</label>
+                        <select name="status" id="today-status" class="form-select" required>
+                            <option value="Present" {% if today_record and today_record.status == 'Present' %}selected{% endif %}>✅ Present</option>
+                            <option value="Work From Home" {% if today_record and today_record.status == 'Work From Home' %}selected{% endif %}>🏠 Work From Home</option>
+                            <option value="Half-Day" {% if today_record and today_record.status == 'Half-Day' %}selected{% endif %}>⏱️ Half-Day</option>
+                            <option value="Leave" {% if today_record and today_record.status == 'Leave' %}selected{% endif %}>🏖️ Leave</option>
+                            <option value="Absent" {% if today_record and today_record.status == 'Absent' %}selected{% endif %}>❌ Absent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="today-checkin">Check-In</label>
+                        <input type="time" name="check_in" id="today-checkin" value="{{ today_record.check_in if today_record else '09:00' }}">
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="today-checkout">Check-Out</label>
+                        <input type="time" name="check_out" id="today-checkout" value="{{ today_record.check_out if today_record else '18:00' }}">
+                    </div>
+
+                    <div class="form-group flex-2">
+                        <label for="today-notes">Notes / Tasks Done</label>
+                        <input type="text" name="notes" id="today-notes" value="{{ today_record.notes if today_record else '' }}" placeholder="e.g. Completed Q3 finance review">
+                    </div>
+
+                    <div class="form-group flex-btn">
+                        <button type="submit" class="btn btn-primary btn-quick-save">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Save Today</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attendance History Table -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-calendar-days"></i> Attendance History Log</h3>
+            <span class="badge badge-count">{{ records|length }} Records</span>
+        </div>
+        <div class="card-body no-padding">
+            {% if records %}
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Check-In</th>
+                            <th>Check-Out</th>
+                            <th>Notes</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td class="font-medium">
+                                <i class="fa-regular fa-calendar text-muted"></i> {{ r.date }}
+                            </td>
+                            <td>
+                                {% if r.status == 'Present' %}
+                                <span class="badge badge-present"><i class="fa-solid fa-check"></i> Present</span>
+                                {% elif r.status == 'Work From Home' %}
+                                <span class="badge badge-wfh"><i class="fa-solid fa-house-laptop"></i> Work From Home</span>
+                                {% elif r.status == 'Half-Day' %}
+                                <span class="badge badge-halfday"><i class="fa-solid fa-clock-half-to-one"></i> Half-Day</span>
+                                {% elif r.status == 'Leave' %}
+                                <span class="badge badge-leave"><i class="fa-solid fa-umbrella-beach"></i> Leave</span>
+                                {% else %}
+                                <span class="badge badge-absent"><i class="fa-solid fa-xmark"></i> Absent</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ r.check_in or '--:--' }}</td>
+                            <td>{{ r.check_out or '--:--' }}</td>
+                            <td class="text-muted">{{ r.notes or 'None' }}</td>
+                            <td class="text-center">
+                                <form action="{{ url_for('delete_attendance', record_id=r.id) }}" method="POST" onsubmit="return confirm('Delete this attendance entry?');">
+                                    <button type="submit" class="btn-icon-delete" title="Delete record">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+                <h4>No attendance logs found</h4>
+                <p>Log your attendance for today or any past dates using the form above.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: LOG ATTENDANCE FOR ANY DATE ==================== -->
+<div id="modal-attendance" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-attendance')">
+    <div class="modal-dialog">
+        <div class="modal-header header-primary">
+            <h3><i class="fa-solid fa-calendar-check"></i> Log Attendance Entry</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modal-attendance')">&times;</button>
+        </div>
+        <form action="{{ url_for('mark_attendance') }}" method="POST" class="modal-form">
+            <div class="form-group">
+                <label for="attend-date">Date *</label>
+                <input type="date" id="attend-date" name="date" value="{{ today_date }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="attend-status">Status *</label>
+                <select id="attend-status" name="status" class="form-select" required>
+                    <option value="Present">✅ Present</option>
+                    <option value="Work From Home">🏠 Work From Home</option>
+                    <option value="Half-Day">⏱️ Half-Day</option>
+                    <option value="Leave">🏖️ Leave</option>
+                    <option value="Absent">❌ Absent</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-half">
+                    <label for="attend-in">Check-In Time</label>
+                    <input type="time" id="attend-in" name="check_in" value="09:00">
+                </div>
+                <div class="form-group col-half">
+                    <label for="attend-out">Check-Out Time</label>
+                    <input type="time" id="attend-out" name="check_out" value="18:00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="attend-notes">Notes / Work Summary</label>
+                <textarea id="attend-notes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-attendance')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

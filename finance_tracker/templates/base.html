@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Personal Finance & Attendance Tracker{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('dashboard') }}" class="brand-logo">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span>FinTrack<span class="brand-accent">.ai</span></span>
+            </a>
+
+            {% if current_user %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Finance Dashboard</span>
+                </a>
+                <a href="{{ url_for('attendance_page') }}" class="nav-link {% if request.endpoint == 'attendance_page' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Attendance</span>
+                </a>
+            </nav>
+
+            <div class="user-menu">
+                <!-- Currency Selector Form -->
+                <form action="{{ url_for('update_currency') }}" method="POST" class="currency-form" title="Change Currency">
+                    <select name="currency" onchange="this.form.submit()" class="currency-select">
+                        <option value="₹" {% if current_user.currency == '₹' %}selected{% endif %}>₹ INR</option>
+                        <option value="$" {% if current_user.currency == '$' %}selected{% endif %}>$ USD</option>
+                        <option value="€" {% if current_user.currency == '€' %}selected{% endif %}>€ EUR</option>
+                        <option value="£" {% if current_user.currency == '£' %}selected{% endif %}>£ GBP</option>
+                        <option value="¥" {% if current_user.currency == '¥' %}selected{% endif %}>¥ JPY/CNY</option>
+                        <option value="AED " {% if current_user.currency == 'AED ' %}selected{% endif %}>AED</option>
+                    </select>
+                </form>
+
+                <div class="user-profile-badge">
+                    <div class="avatar">{{ current_user.full_name[0]|upper }}</div>
+                    <div class="user-info">
+                        <span class="user-name">{{ current_user.full_name }}</span>
+                        <span class="user-tag">@{{ current_user.username }}</span>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('logout') }}" class="btn-logout" title="Sign Out">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
+            </div>
+            {% else %}
+            <div class="nav-auth-links">
+                <a href="{{ url_for('login') }}" class="btn btn-outline">Sign In</a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary">Create Account</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Flash Messages Container -->
+    <div class="alerts-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    <div class="alert-content">
+                        <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-exclamation{% elif category == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button type="button" class="alert-close" onclick="this.parentElement.remove();">&times;</button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content Block -->
+    <main class="main-wrapper">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2026 <strong>FinTrack</strong> &mdash; Multi-User Personal Finance & Attendance Tracker. All rights reserved.</p>
+            <p class="data-privacy"><i class="fa-solid fa-lock"></i> Isolated User Sandbox &bull; SQLite Encrypted Store</p>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

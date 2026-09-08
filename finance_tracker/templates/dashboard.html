@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Finance Dashboard - FinTrack{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Welcome Header -->
+    <div class="page-header">
+        <div class="page-title-group">
+            <h1 class="page-title">Personal Finance Dashboard</h1>
+            <p class="page-subtitle">Track your incoming money, outgoing expenses, and live balance.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-income" onclick="openModal('modal-income')">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Add Income</span>
+            </button>
+            <button class="btn btn-expense" onclick="openModal('modal-expense')">
+                <i class="fa-solid fa-minus-circle"></i>
+                <span>Add Expense</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats / KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card card-balance">
+            <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Current Net Balance</span>
+                <h2 class="kpi-value {% if balance >= 0 %}text-positive{% else %}text-negative{% endif %}">
+                    {{ current_user.currency }}{{ "%.2f"|format(balance) }}
+                </h2>
+                <span class="kpi-subtext">Calculated: Total Income - Total Expenses</span>
+            </div>
+        </div>
+
+        <div class="kpi-card card-income">
+            <div class="kpi-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Total Money Added (Income)</span>
+                <h2 class="kpi-value text-positive">
+                    +{{ current_user.currency }}{{ "%.2f"|format(total_income) }}
+                </h2>
+                <span class="kpi-subtext">All received earnings & deposits</span>
+            </div>
+        </div>
+
+        <div class="kpi-card card-expense">
+            <div class="kpi-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Total Money Withdrawn (Expenses)</span>
+                <h2 class="kpi-value text-negative">
+                    -{{ current_user.currency }}{{ "%.2f"|format(total_expense) }}
+                </h2>
+                <span class="kpi-subtext">All withdrawals & expenses spent</span>
+            </div>
+        </div>
+
+        <div class="kpi-card card-savings">
+            <div class="kpi-icon"><i class="fa-solid fa-piggy-bank"></i></div>
+            <div class="kpi-content">
+                <span class="kpi-label">Savings Rate</span>
+                <h2 class="kpi-value text-accent">{{ savings_rate }}%</h2>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" data-progress="{{ savings_rate }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts & Analytics Section -->
+    <div class="analytics-grid" id="dashboard-analytics" 
+         data-income="{{ total_income }}" 
+         data-expense="{{ total_expense }}" 
+         data-currency="{{ current_user.currency }}">
+        <div class="content-card chart-card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-chart-pie"></i> Expense Breakdown by Category</h3>
+            </div>
+            <div class="card-body chart-body">
+                {% if expense_by_category %}
+                <canvas id="expenseCategoryChart"></canvas>
+                {% else %}
+                <div class="empty-state-mini">
+                    <i class="fa-solid fa-receipt"></i>
+                    <p>No expense data to display yet. Add an expense to see breakdown.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="content-card chart-card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-chart-column"></i> Cash Flow Overview</h3>
+            </div>
+            <div class="card-body chart-body">
+                {% if total_income > 0 or total_expense > 0 %}
+                <canvas id="cashFlowChart"></canvas>
+                {% else %}
+                <div class="empty-state-mini">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    <p>No financial activity recorded yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Management Table -->
+    <div class="content-card transactions-card">
+        <div class="card-header transactions-header">
+            <div class="header-left">
+                <h3><i class="fa-solid fa-list-check"></i> Transaction Records</h3>
+                <span class="badge badge-count">{{ transactions|length }} Records</span>
+            </div>
+
+            <!-- Filter Controls -->
+            <form action="{{ url_for('dashboard') }}" method="GET" class="filter-form">
+                <div class="filter-group">
+                    <select name="type" onchange="this.form.submit()" class="filter-select">
+                        <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Types</option>
+                        <option value="income" {% if filter_type == 'income' %}selected{% endif %}>Income (+)</option>
+                        <option value="expense" {% if filter_type == 'expense' %}selected{% endif %}>Expense (-)</option>
+                    </select>
+
+                    <select name="category" onchange="this.form.submit()" class="filter-select">
+                        <option value="all" {% if filter_category == 'all' %}selected{% endif %}>All Categories</option>
+                        {% for cat in available_categories %}
+                        <option value="{{ cat }}" {% if filter_category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+
+                    {% if filter_type != 'all' or filter_category != 'all' %}
+                    <a href="{{ url_for('dashboard') }}" class="btn-clear-filter" title="Reset Filters">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <div class="card-body no-padding">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                        <tr>
+                            <td>
+                                {% if t.type == 'income' %}
+                                <span class="badge badge-income"><i class="fa-solid fa-arrow-down-long"></i> Income</span>
+                                {% else %}
+                                <span class="badge badge-expense"><i class="fa-solid fa-arrow-up-long"></i> Expense</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-medium">{{ t.description or 'No description' }}</td>
+                            <td><span class="category-pill">{{ t.category }}</span></td>
+                            <td class="text-muted">{{ t.date }}</td>
+                            <td class="text-right font-bold {% if t.type == 'income' %}text-positive{% else %}text-negative{% endif %}">
+                                {% if t.type == 'income' %}+{% else %}-{% endif %}{{ current_user.currency }}{{ "%.2f"|format(t.amount) }}
+                            </td>
+                            <td class="text-center">
+                                <form action="{{ url_for('delete_transaction', transaction_id=t.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this record?');">
+                                    <button type="submit" class="btn-icon-delete" title="Delete record">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
+                <h4>No transactions found</h4>
+                <p>Start by recording money you added (income) or withdrew (expenses).</p>
+                <div class="empty-actions">
+                    <button class="btn btn-income" onclick="openModal('modal-income')">Add Income</button>
+                    <button class="btn btn-expense" onclick="openModal('modal-expense')">Add Expense</button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: ADD INCOME ==================== -->
+<div id="modal-income" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-income')">
+    <div class="modal-dialog">
+        <div class="modal-header header-income">
+            <h3><i class="fa-solid fa-circle-plus"></i> Add Income (Money Added)</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modal-income')">&times;</button>
+        </div>
+        <form action="{{ url_for('add_transaction') }}" method="POST" class="modal-form">
+            <input type="hidden" name="type" value="income">
+
+            <div class="form-group">
+                <label for="income-amount">Amount ({{ current_user.currency }}) *</label>
+                <div class="input-with-icon">
+                    <span class="input-prefix">{{ current_user.currency }}</span>
+                    <input type="number" step="0.01" min="0.01" id="income-amount" name="amount" placeholder="0.00" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="income-category">Category *</label>
+                <select id="income-category" name="category" class="form-select" required>
+                    <option value="Salary">💰 Salary / Wages</option>
+                    <option value="Freelance">💻 Freelance / Projects</option>
+                    <option value="Investments">📈 Investments / Dividends</option>
+                    <option value="Business">🏢 Business Revenue</option>
+                    <option value="Gift">🎁 Gift / Bonus</option>
+                    <option value="Refund">🔄 Refund / Cashback</option>
+                    <option value="Other">✨ Other Income</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="income-desc">Description (Optional)</label>
+                <input type="text" id="income-desc" name="description" placeholder="e.g. Monthly salary, Client project payment">
+            </div>
+
+            <div class="form-group">
+                <label for="income-date">Date *</label>
+                <input type="date" id="income-date" name="date" value="{{ today_date }}" required>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-income')">Cancel</button>
+                <button type="submit" class="btn btn-income">Save Income</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== MODAL: ADD EXPENSE ==================== -->
+<div id="modal-expense" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-expense')">
+    <div class="modal-dialog">
+        <div class="modal-header header-expense">
+            <h3><i class="fa-solid fa-circle-minus"></i> Add Expense (Money Withdrawn)</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modal-expense')">&times;</button>
+        </div>
+        <form action="{{ url_for('add_transaction') }}" method="POST" class="modal-form">
+            <input type="hidden" name="type" value="expense">
+
+            <div class="form-group">
+                <label for="expense-amount">Amount ({{ current_user.currency }}) *</label>
+                <div class="input-with-icon">
+                    <span class="input-prefix">{{ current_user.currency }}</span>
+                    <input type="number" step="0.01" min="0.01" id="expense-amount" name="amount" placeholder="0.00" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="expense-category">Category *</label>
+                <select id="expense-category" name="category" class="form-select" required>
+                    <option value="Food & Dining">🍔 Food & Dining</option>
+                    <option value="Rent & Housing">🏠 Rent & Housing</option>
+                    <option value="Groceries">🛒 Groceries</option>
+                    <option value="Utilities & Bills">💡 Utilities & Bills</option>
+                    <option value="Travel & Transport">🚗 Travel & Transport</option>
+                    <option value="Shopping">🛍️ Shopping</option>
+                    <option value="Health & Medical">💊 Health & Medical</option>
+                    <option value="Entertainment">🎬 Entertainment</option>
+                    <option value="Education">📚 Education</option>
+                    <option value="Other">📦 Other Expense</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="expense-desc">Description (Optional)</label>
+                <input type="text" id="expense-desc" name="description" placeholder="e.g. Grocery store, Electricity bill">
+            </div>
+
+            <div class="form-group">
+                <label for="expense-date">Date *</label>
+                <input type="date" id="expense-date" name="date" value="{{ today_date }}" required>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-expense')">Cancel</button>
+                <button type="submit" class="btn btn-expense">Save Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
